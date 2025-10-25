@@ -1,36 +1,52 @@
 import mongoose from 'mongoose';
 
 const planeacionSchema = new mongoose.Schema({
-  profesorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Usuario',
-    required: true
+  profesor: { 
+    type: String, 
+    required: true 
   },
-  materiaId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Materia',
-    required: true
+  materia: { 
+    type: String, 
+    required: true 
   },
-  parcial: {
-    type: Number,
-    required: true
+  parcial: { 
+    type: Number, 
+    required: true,
+    min: 1,
+    max: 3
   },
-  archivoURL: {
+  cicloEscolar: {
     type: String,
-    required: true
+    required: true,
+    default: () => {
+      const currentYear = new Date().getFullYear();
+      return `${currentYear}-${currentYear + 1}`;
+    }
   },
-  estado: {
+  archivo: { 
     type: String,
-    enum: ['pendiente', 'aprobada', 'ajustes'],
-    default: 'pendiente'
+    required: true 
   },
-  fechaRegistro: {
-    type: Date,
-    default: Date.now
+  estado: { 
+    type: String, 
+    enum: ['pendiente', 'aprobado', 'rechazado', 'ajustes_solicitados'], 
+    default: 'pendiente' 
   },
-  fechaRevision: Date,
-  comentarios: String
-});
+  observaciones: { 
+    type: String,
+    default: '' 
+  },
+  coordinadorRevisor: {
+    type: String,
+    default: ''
+  },
+  fechaRevision: {
+    type: Date
+  },
+  fechaSubida: { 
+    type: Date, 
+    default: Date.now 
+  },
+}, { timestamps: true });
 
-const Planeacion = mongoose.model('Planeacion', planeacionSchema);
-export default Planeacion;
+export default mongoose.model('Planeacion', planeacionSchema);

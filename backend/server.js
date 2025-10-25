@@ -1,86 +1,87 @@
 import express from 'express';
-import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { connectDB } from './src/config/db.js';
 import swaggerUi from 'swagger-ui-express';
-import swaggerJsdoc from 'swagger-jsdoc';
+import swaggerSpec from './src/docs/swagger.js';
 
 import planeacionRoutes from './src/routes/planeacionRoutes.js';
+import avanceRoutes from './src/routes/avanceRoutes.js';
+import evidenciaRoutes from './src/routes/evidenciaRoutes.js';
 
 dotenv.config();
 const app = express();
 
+//  Middleware
 app.use(cors());
 app.use(express.json());
 
-// =======================
-// 📘 CONFIGURACIÓN SWAGGER
-// =======================
-const swaggerOptions = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'API - Gestión Planeación Académica',
-      version: '1.0.0',
-      description: 'Documentación de la API de pruebas para la gestión académica',
-    },
-    servers: [
-      {
-        url: 'http://localhost:4000',
-        description: 'Servidor local',
-      },
-    ],
-  },
-  apis: ['./index.js', './src/routes/*.js'], // rutas donde estarán las anotaciones Swagger
-};
+//  Documentación Swagger
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "API - Gestión Planeación Académica"
+}));
 
-const swaggerDocs = swaggerJsdoc(swaggerOptions);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
-
-// =======================
-// 🚀 RUTAS PRINCIPALES
-// =======================
-
-/**
- * @swagger
- * /:
- *   get:
- *     summary: Verifica que el servidor esté activo
- *     tags: [Test]
- *     responses:
- *       200:
- *         description: Respuesta exitosa del servidor
- */
-app.get('/', (req, res) => {
-  res.send('Servidor backend activo 🚀');
-});
-
-/**
- * @swagger
- * /api/test:
- *   get:
- *     summary: Endpoint de prueba del backend
- *     tags: [Test]
- *     responses:
- *       200:
- *         description: Prueba exitosa de la API
- */
-app.get('/api/test', (req, res) => {
-  res.json({ mensaje: '✅ API funcionando correctamente' });
-});
-
-// Ruta principal de planeaciones
+//  Rutas principales
 app.use('/api/planeaciones', planeacionRoutes);
+app.use('/api/avances', avanceRoutes);
+app.use('/api/evidencias', evidenciaRoutes);
 
-// =======================
-// 🔗 CONEXIÓN A MONGODB
-// =======================
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ Conectado a MongoDB'))
-  .catch(err => console.error('❌ Error de conexión:', err));
+//  Ruta de prueba
+app.get('/', (req, res) => {
+  res.json({ 
+    message: ' Backend activo y listo con Swagger!',
+    documentation: '/api-docs',
+    endpoints: {
+      planeaciones: '/api/planeaciones',
+      avances: '/api/avances',
+      evidencias: '/api/evidencias'
+    }
+  });
+});
 
-// =======================
-// ⚙️ SERVIDOR EN EJECUCIÓN
-// =======================
+//  Manejo de rutas no encontradas (CORREGIDO)
+app.use((req, res) => {
+  res.status(404).json({
+    message: `Ruta no encontrada: ${req.method} ${req.originalUrl}`,
+    availableRoutes: [
+      'GET    /api/planeaciones',
+      'POST   /api/planeaciones', 
+      'GET    /api/planeaciones/ciclo-actual',
+      'GET    /api/planeaciones/historial',
+      'GET    /api/planeaciones/:id',
+      'PUT    /api/planeaciones/:id',
+      'PUT    /api/planeaciones/:id/revisar',
+      'GET    /api/avances',
+      'POST   /api/avances',
+      'PUT    /api/avances/:id', 
+      'DELETE /api/avances/:id',
+      'GET    /api/evidencias',
+      'POST   /api/evidencias',
+      'GET    /api-docs'
+    ]
+  });
+});
+
+//  Manejo global de errores
+app.use((error, req, res, next) => {
+  console.error('Error:', error);
+  res.status(500).json({
+    message: 'Error interno del servidor',
+    error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+  });
+});
+
+//  Conexión a MongoDB
+connectDB();
+
+//  Iniciar servidor
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`🚀 Backend corriendo en puerto ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`
+     Servidor corriendo en puerto ${PORT}
+     Documentación disponible en: http://localhost:${PORT}/api-docs
+     Ambiente: ${process.env.NODE_ENV || 'development'}
+  `);
+});
